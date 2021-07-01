@@ -21,13 +21,31 @@ public class Script : ScriptBase
     // Called when the user pressed play
 
     bool stop = false;
+    bool running = false;
+    bool pause = false;
+    string pausedOn = "";
     public override void Start()
     {
         base.Start();
         stop = false;
-
+        running = true;
+        pause = false;
         foreach (string Passcode in MostCommonPasscodes)
         {
+
+            if(pausedOn != "")
+            {
+                if (Passcode != pausedOn)
+                    continue;
+                else
+                    pausedOn = "";
+            }
+
+            if (pause)
+            {
+                pausedOn = Passcode;
+                break;
+            }
             Console.WriteLine("Try Passcode: " + Passcode);
             SendPasscode(Passcode);
 
@@ -36,8 +54,8 @@ public class Script : ScriptBase
                 break;
             }
         }
- 
 
+        running = false;
 
     }
     public override void OnStopped()
@@ -218,7 +236,7 @@ public class Script : ScriptBase
 
             ClearButtons();
             if(c == lastC)
-                for(int ii = 0; ii < 5; ii++)
+                for(int ii = 0; ii < 3; ii++)
                     WaitFrame();
 
 
