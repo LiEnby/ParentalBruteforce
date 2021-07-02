@@ -6,6 +6,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Threading;
+using System.Windows.Forms;
 
 public class Script : ScriptBase
 {
@@ -22,21 +23,30 @@ public class Script : ScriptBase
 
     bool stop = false;
     bool running = false;
+    bool guessed = false;
     bool pause = false;
     string pausedOn = "";
     public override void Start()
     {
+        Console.WriteLine("Play!");
         base.Start();
+        if (running)
+            return;
+
         stop = false;
         running = true;
         pause = false;
+        guessed = false;
+
         foreach (string Passcode in MostCommonPasscodes)
         {
 
             if(pausedOn != "")
             {
                 if (Passcode != pausedOn)
+                {
                     continue;
+                }
                 else
                     pausedOn = "";
             }
@@ -57,6 +67,13 @@ public class Script : ScriptBase
 
         running = false;
 
+    }
+    public override void OnPaused()
+    {
+        base.OnPaused();
+
+        pause = true;
+        running = false;
     }
     public override void OnStopped()
     {
@@ -89,10 +106,18 @@ public class Script : ScriptBase
                         return false;
                     }
 
-
-
-
                     bmp = base.CaptureFrame();
+
+                    col = bmp.GetPixel(177, 199);
+                    if (col.GetBrightness() > 0.8)
+                    {
+                        ClearButtons();
+                        Console.WriteLine("The passcode is correct!!!");
+                        OnStopped();
+                        guessed = true;
+                        return true;
+                    }
+
                     col = bmp.GetPixel(502, 532);
                     if (col.GetBrightness() > 0.9)
                     {
@@ -101,8 +126,7 @@ public class Script : ScriptBase
                         while (true)
                         {
                             SetButtons(new DualShockState() { Cross = true });
-                            for (int i = 0; i < 5; i++)
-                                WaitFrame();
+                            WaitFrame();
                             ClearButtons();
                             bmp = base.CaptureFrame();
                             col = bmp.GetPixel(383 + (0 * 64), 276);
@@ -118,32 +142,7 @@ public class Script : ScriptBase
             if (col.GetBrightness() > 0.8)
             {
                 ClearButtons();
-                if (!waitForAvalible)
-                    return true;
-                pos++;
-                timePos = 0;
-
-                while (true)
-                {
-                    lastPos = pos;
-
-                    timePos += 1;
-
-
-                    if (timePos >= 60)
-                    {
-                        timePos = 0;
-                        return false;
-                    }
-
-
-                    bmp = base.CaptureFrame();
-                    col = bmp.GetPixel(382 + (pos * 64), 275);
-                    if (col.GetBrightness() > 0.8)
-                    {
-                        return true;
-                    }
-                }
+                return true;
             }
 
             lastPos = pos;
@@ -196,6 +195,11 @@ public class Script : ScriptBase
         {
             return 3;
         }
+        col = bmp.GetPixel(177, 199);
+        if (col.GetBrightness() > 0.8)
+        {
+            return 3;
+        }
 
         for (int i = 0; i < 3; i++)
         {
@@ -231,16 +235,10 @@ public class Script : ScriptBase
         for (int i = 0; i < passcode.Length; i = FindPos())
         {
 
-            char c = passcode[i];
-
-
             ClearButtons();
-            if(c == lastC)
-                for(int ii = 0; ii < 3; ii++)
-                    WaitFrame();
+            WaitFrame();
 
-
-
+            char c = passcode[i];
             switch (c)
             {
                 case '0':
@@ -278,19 +276,25 @@ public class Script : ScriptBase
             lastC = c;
 
             if (!WaitForButtonRegistered(i, false))
-            {
                 continue;
+
+            if (guessed)
+            {
+                MessageBox.Show("Passcode found! Its: " + passcode, "FOUND!", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                break;
             }
             if (triedCode)
                 break;
+
         }
+        ClearButtons();
 
     }
 
 
     public override void Update()
     {
-
-
+        if (pause)
+            Start();
     }
 }
